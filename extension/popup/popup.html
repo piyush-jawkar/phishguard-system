@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PhishGuard</title>
+    <link rel="stylesheet" href="../styles/style.css">
+</head>
+<body>
+
+<div class="card">
+
+    <div class="header">
+        <h2>PhishGuard Analysis</h2>
+        <div class="info-icon">i</div>
+    </div>
+
+    <div class="risk-chart-container">
+        <div class="risk-chart"></div>
+        <div class="risk-pill" id="risk-pill">Analyzing...</div>
+    </div>
+
+    <div class="section">
+        <h3>Risk Factors</h3>
+        <ul class="risk-list" id="risk-list">
+            <li>Scanning current page...</li>
+        </ul>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+        <h3>Detailed Explanation</h3>
+        <p id="explanation">
+            Please wait while PhishGuard analyzes the current page.
+        </p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+        <h3>Recommended Actions</h3>
+        <div class="actions">
+            <button class="safe-btn">Mark as Safe</button>
+            <button class="report-btn">Report Phishing</button>
+        </div>
+        <div class="learn-more">Learn More</div>
+        <div class="link">phishguard.com/education</div>
+    </div>
+
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>

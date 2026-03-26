@@ -1,0 +1,90 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f4f8;
+    width: 350px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    margin: 10px;
+    padding: 15px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h2 {
+    font-size: 16px;
+    margin: 0;
+}
+
+.risk-badge {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+.risk-badge.high {
+    background: #e74c3c;
+}
+
+.risk-badge.safe {
+    background: #2ecc71;
+}
+
+.section {
+    margin-top: 15px;
+}
+
+.section h3 {
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+ul {
+    padding-left: 18px;
+    margin: 0;
+}
+
+li {
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #555;
+}
+
+p {
+    font-size: 13px;
+    color: #555;
+}
+
+.actions {
+    display: flex;
+    justify-content: space-between;
+}
+
+button {
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.safe-btn {
+    background: #2ecc71;
+    color: white;
+}
+
+.report-btn {
+    background: #e74c3c;
+    color: white;
+}

@@ -1,0 +1,36 @@
+PhishGuard Demo Checklist (6 Cases)
+
+1) True Positive - Brand Spoof + VT Hit
+- Example: faceb00k.com / lnstagram.com
+- Expected: HIGH
+- Show: brand_spoof_score high, vt_score high (if available)
+
+2) True Positive - Suspicious Credential Link
+- Example: temporary-url style credential lure
+- Expected: HIGH
+- Show: url_score near/high threshold and final HIGH
+
+3) True Positive - Multi-link Phishing Body
+- Example: body with suspicious link bundle
+- Expected: HIGH
+- Show: combined scoring (content + url + vt/brand)
+
+4) True Negative - Legit College Form Email
+- Example: forms.office.com from institute
+- Expected: SAFE
+- Show: low risk components and SAFE output
+
+5) True Negative - Newsletter/Tracking Email
+- Example: Twitch/Kotak with many links
+- Expected: SAFE
+- Show: reduced link_score, trusted-domain handling, faster response
+
+6) True Negative - Plain Internal Text Email
+- Example: no links, normal message
+- Expected: SAFE
+- Show: low total score and no hard-rule trigger
+
+Quick talking points:
+- Hybrid model: local ML + heuristics + VirusTotal evidence
+- Speed optimization: VT top-3 risky links only
+- Explainability: per-component debug and VT evidence summary in logs

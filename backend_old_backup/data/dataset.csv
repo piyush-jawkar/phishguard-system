@@ -1,0 +1,9 @@
+url,length,has_https,has_at,has_dash,label
+http://paypal.com.security-check.ru,45,0,0,1,1
+https://google.com,18,1,0,0,0
+http://secure-login-bank.com,28,0,0,1,1
+https://github.com,19,1,0,0,0
+http://verify-account-paypal.com,31,0,0,1,1
+https://microsoft.com,21,1,0,0,0
+http://free-money-win-prize.com,30,0,0,1,1
+https://stackoverflow.com,25,1,0,0,0

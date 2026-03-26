@@ -1,0 +1,233 @@
+PROJECT CONTEXT LOG
+Generated: 2026-03-25 (session)
+Last Updated: 2026-03-26 (session)
+Scope: Project context + implemented fixes/tuning updates.
+
+Repository root:
+E:\VIIE\UGM WINC\UnderGrad Proj\piyush_phishing\piyush_phishing\phishguard-system
+
+============================================================
+1) HIGH-LEVEL STRUCTURE
+============================================================
+- backend/                 Active FastAPI + ML inference/training
+- extension/               Browser extension (Manifest v3, Gmail-only)
+- backend_old_backup/      Legacy prototype backend (separate old pipeline)
+- ml_model/                Legacy artifacts folder (mostly empty/non-active)
+- phishing.csv             URL phishing dataset (feature-labeled)
+- sms.tsv                  SMS spam/ham dataset
+- phishing.txt             Additional dataset/content source
+- phishing-website-detector.zip (root + backend/kaggle)
+
+============================================================
+2) ACTIVE BACKEND (backend/)
+============================================================
+Core runtime:
+- FastAPI app entry: backend\app\main.py
+- Dependencies: backend\requirements.txt
+- Inference models: backend\ml\*.pkl
+
+API routes (main.py):
+- GET  /                -> health check
+- GET  /analyze-url     -> URL-only analysis
+- POST /analyze-email   -> full hybrid analysis
+
+Request schema:
+- EmailRequest { url: str, body: str, links: list[str] }
+
+CORS / security posture:
+- allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+- No API auth/session layer in active backend.
+
+Detection modules (backend\app\core):
+- ml_classifier.py          URL ML (RandomForest + engineered URL features)
+- text_ml_classifier.py     Text ML (TF-IDF + LogisticRegression)
+- content_analyzer.py       Keyword heuristic scoring
+- link_analyzer.py          Suspicious-link pattern scoring
+- unicode_detector.py       Non-ASCII ratio heuristic
+- reputation_service.py     Static safe-domain based reputation
+- risk_engine.py            Weighted fusion + hard override rules
+- brand_detector.py         Levenshtein brand spoof heuristic (present, not wired in main flow)
+- domain_validator.py       Sender/link mismatch helper (present, not wired in main flow)
+- domain_whitelist.py       Duplicate/invalid snippet (not active utility)
+
+Observed scoring fusion (risk_engine.py):
+- URL 30%, Link 25%, Text ML 15%, Content 15%, Unicode 5%, Reputation 10%
+- Hard HIGH overrides for strong URL/link/reputation thresholds.
+
+Trusted/reputation patterns:
+- Trusted/safe domain constants are duplicated across multiple files.
+
+============================================================
+3) TRAINING PIPELINE (backend\ml and backend\ml_v2)
+============================================================
+Primary training scripts:
+- backend\ml\train.py
+  - Loads root phishing.csv
+  - Trains RandomForest URL classifier
+  - Saves phishing_model.pkl + feature_columns.pkl
+
+- backend\ml\train_text_model.py
+  - Loads root sms.tsv
+  - Trains TF-IDF + LogisticRegression text classifier
+  - Saves text_model.pkl + text_vectorizer.pkl
+
+Active inference artifacts:
+- backend\ml\phishing_model.pkl
+- backend\ml\feature_columns.pkl
+- backend\ml\text_model.pkl
+- backend\ml\text_vectorizer.pkl
+
+Experimental/secondary:
+- backend\ml_v2\train_url_model.py
+- backend\ml_v2\train_text_model_v2.py
+- backend\ml_v2\url_feature_engineering.py
+These are present but not integrated from backend\app\main.py.
+
+============================================================
+4) BROWSER EXTENSION (extension/)
+============================================================
+Manifest and scope:
+- extension\manifest.json
+- Manifest v3
+- host_permissions: *://mail.google.com/*
+- content script: extension\scripts\content.js
+- popup: extension\popup\popup.html + popup.js
+
+Flow:
+1) Popup loads and requests message type EXTRACT_EMAIL from content script.
+2) content.js scrapes Gmail email container (.ii.gt), returns body + links.
+3) popup.js sends POST to http://127.0.0.1:8000/analyze-email
+4) Backend returns risk_level (+ debug scores)
+5) Popup updates risk pill/list/explanation.
+
+UI:
+- CSS in extension\styles\style.css (+ popup.css present but appears unused by popup.html)
+- Risk states rendered as HIGH/MEDIUM/SAFE with color-coded pill.
+
+============================================================
+5) CONFIG / ENV / DEPLOYMENT STATUS
+============================================================
+Environment/secrets config:
+- No project-level .env files discovered.
+- backend\app\config.py exists but empty.
+- Hardcoded localhost backend URL in extension popup.js.
+
+Deployment tooling:
+- No Dockerfile found at project level.
+- No docker-compose*.yml found.
+- No production infra manifests found.
+
+Notable sensitive artifacts:
+- backend\kaggle\KEY exists.
+- backend\kaggle\phishing-website-detector.zip exists.
+
+============================================================
+6) DATA LAYER & PERSISTENCE
+============================================================
+- No database integration (SQL/NoSQL) in active app.
+- No ORM models/migrations.
+- Runtime analysis is in-memory and request/response only.
+- No persistent analysis history/user feedback store.
+
+============================================================
+7) TESTING / QUALITY TOOLING
+============================================================
+- No project test suite discovered for active app/extension.
+- No project-level JS package.json build/test pipeline.
+- No project-level pyproject.toml/setup.py for active source package management.
+- Dependency management is requirements.txt + local virtualenv folders.
+
+============================================================
+8) LEGACY BACKUP CONTEXT
+============================================================
+backend_old_backup contains an older simple pipeline:
+- backend_old_backup\main.py       FastAPI /predict endpoint
+- backend_old_backup\train_model.py
+- backend_old_backup\data\dataset.csv
+- backend_old_backup\model.pkl
+This is separate from the active hybrid backend.
+
+============================================================
+9) END-TO-END ACTIVE REQUEST PATH
+============================================================
+Gmail page -> extension content scrape -> popup POST /analyze-email ->
+hybrid scoring (URL ML + text ML + heuristics + risk engine) ->
+risk_level response -> popup UI rendering.
+
+============================================================
+10) IMPLEMENTED FIXES (2026-03-25 to 2026-03-26)
+============================================================
+- Cross-browser extension compatibility fixes:
+  - Added `const ext = globalThis.browser ?? globalThis.chrome;` in popup/content scripts.
+  - Reworked content message handler to Chrome-safe `sendResponse(...)` style.
+  - Added fallback in popup to inject content script via `chrome.scripting.executeScript` when receiver is missing.
+  - Added `"scripting"` permission in `extension\manifest.json`.
+
+- Backend risk tuning and false-positive reduction:
+  - `backend\app\core\link_analyzer.py`
+    - Replaced additive-all-links scoring with per-link scoring + max/avg blend.
+    - Added ignore rules for trusted-domain utility links (unsubscribe/privacy/support/report).
+    - Added typo-brand regex patterns (`lnstagram`, `paypa1`, etc.).
+    - Added trusted domains for newsletter ecosystems to reduce noisy penalties.
+  - `backend\app\core\risk_engine.py`
+    - Added `brand_spoof_score` as explicit input.
+    - Tuned hard rules: URL HIGH threshold `0.85`, link HIGH threshold `0.9`.
+    - Rebalanced weighted fusion (reduced link weight; added brand spoof weight).
+    - Adjusted cutoffs to reduce newsletter HIGH inflation.
+  - `backend\app\main.py`
+    - Integrated `detect_brand_spoof(...)` in email flow.
+    - Added `brand_spoof_score` to debug output and risk calculation payload.
+
+============================================================
+11) VALIDATION STATUS SNAPSHOT
+============================================================
+- Extension now runs on Chrome and Firefox with popup-to-content messaging functional.
+- Backend prints expanded score diagnostics including `brand_spoof_score`.
+- Primary observed prior issue: legitimate newsletter-style emails over-triggered HIGH due to link saturation; mitigations implemented.
+
+============================================================
+12) CURRENT PRIORITY
+============================================================
+- Re-test with the same email corpus and compare before/after confusion trends.
+- If needed, perform one more threshold/whitelist pass based on new logs.
+
+============================================================
+13) PERFORMANCE + QUALITY UPDATE (2026-03-26)
+============================================================
+- VT latency optimization:
+  - `backend\app\core\vt_service.py`
+    - Reduced VT request timeout (`8 -> 5`)
+    - Reduced polling (`4x2s -> 2x1s`)
+    - Added `VT_SUBMIT_ON_UNKNOWN` env flag (default false) to skip expensive submit/poll on unknown URLs.
+
+- VT call volume reduction:
+  - `backend\app\main.py`
+    - Computes local heuristic priority per link.
+    - Sends only top 3 risky links to VT per email instead of all links.
+    - Keeps full local scoring for all links.
+
+- Missed-phish sensitivity tuning:
+  - `backend\app\core\risk_engine.py`
+    - URL hard HIGH threshold updated (`0.85 -> 0.82`).
+
+- Duplicate request mitigation:
+  - `extension\popup\popup.js`
+    - Added `analysisInProgress` guard and `finally` reset to avoid duplicate popup-triggered analysis runs.
+
+============================================================
+14) PRE-ATTACHMENT BASELINE (2026-03-26)
+============================================================
+- Risk/threshold snapshot frozen for baseline:
+  - URL hard HIGH threshold: `0.82`
+  - VT hard HIGH threshold: `0.85`
+  - Link hard HIGH threshold: `0.9`
+  - Brand spoof hard HIGH threshold: `0.95`
+
+- Explainability enhancement:
+  - `backend\app\main.py`
+    - Added `vt_evidence_summary` log print (status/source/reason + malicious/suspicious counts).
+
+- Benchmarking artifacts added in session files:
+  - `files\email_benchmark_template.csv` (30-case matrix template)
+  - `files\demo_checklist_6_cases.txt` (professor demo sequence)
+

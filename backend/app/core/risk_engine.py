@@ -46,6 +46,7 @@ def calculate_risk(
     unicode_score: float,
     reputation_score: float,
     brand_spoof_score: float = 0.0,
+    attachment_score: float = 0.0,
     vt_score: float = 0.0,
     url: str | None = None
 ):
@@ -67,10 +68,13 @@ def calculate_risk(
     if brand_spoof_score >= 0.95:
         return "HIGH"
 
+    if attachment_score >= 0.95:
+        return "HIGH"
+
     # ------------------------------------------------
     # Weighted Risk Model
     # ------------------------------------------------
-    final_score = (
+    base_score = (
         (url_score * 0.24) +
         (content_score * 0.12) +
         (link_score * 0.12) +
@@ -80,6 +84,7 @@ def calculate_risk(
         (brand_spoof_score * 0.10) +
         (vt_score * 0.15)
     )
+    final_score = base_score if attachment_score <= 0 else ((base_score * 0.88) + (attachment_score * 0.12))
 
     # ------------------------------------------------
     # Risk Classification

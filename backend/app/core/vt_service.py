@@ -12,7 +12,7 @@ VT_POLL_ATTEMPTS = 2
 VT_POLL_SLEEP = 1
 VT_SUBMIT_ON_UNKNOWN = os.getenv("VT_SUBMIT_ON_UNKNOWN", "false").lower() == "true"
 
-# simple in-memory cache: {url: (timestamp, (score, evidence))}
+# simple in-memory cache: {"url:<url>"|"file:<sha256>": (timestamp, (score, evidence))}
 _CACHE: Dict[str, Tuple[float, Tuple[float, Dict[str, Any]]]] = {}
 CACHE_TTL_SECONDS = 24 * 60 * 60
 
@@ -46,7 +46,8 @@ def get_vt_score(url: str) -> Tuple[float, Dict[str, Any]]:
         return _default_result("missing_api_key")
 
     now = time.time()
-    cached = _CACHE.get(url)
+    cache_key = f"url:{url}"
+    cached = _CACHE.get(cache_key)
     if cached and (now - cached[0] < CACHE_TTL_SECONDS):
         return cached[1]
 
@@ -70,7 +71,7 @@ def get_vt_score(url: str) -> Tuple[float, Dict[str, Any]]:
                     "last_analysis_date": attrs.get("last_analysis_date"),
                 },
             )
-            _CACHE[url] = (now, result)
+            _CACHE[cache_key] = (now, result)
             return result
 
         if report_resp.status_code in (400, 404) and not VT_SUBMIT_ON_UNKNOWN:
@@ -112,10 +113,56 @@ def get_vt_score(url: str) -> Tuple[float, Dict[str, Any]]:
                     "analysis_id": analysis_id,
                 },
             )
-            _CACHE[url] = (time.time(), result)
+            _CACHE[cache_key] = (time.time(), result)
             return result
 
         return _default_result("analysis_timeout")
+
+    except requests.RequestException as exc:
+        return _default_result(f"request_error:{type(exc).__name__}")
+
+
+def get_vt_file_hash_score(file_hash: str) -> Tuple[float, Dict[str, Any]]:
+    normalized_hash = (file_hash or "").strip().lower()
+    if not normalized_hash:
+        return _default_result("missing_file_hash")
+    if not VT_API_KEY:
+        return _default_result("missing_api_key")
+
+    now = time.time()
+    cache_key = f"file:{normalized_hash}"
+    cached = _CACHE.get(cache_key)
+    if cached and (now - cached[0] < CACHE_TTL_SECONDS):
+        return cached[1]
+
+    headers = {"x-apikey": VT_API_KEY}
+
+    try:
+        report_resp = requests.get(
+            f"{VT_BASE}/files/{normalized_hash}", headers=headers, timeout=VT_TIMEOUT
+        )
+
+        if report_resp.status_code == 200:
+            attrs = report_resp.json()["data"]["attributes"]
+            stats = attrs.get("last_analysis_stats", {})
+            score = _normalize_stats(stats)
+            result = (
+                score,
+                {
+                    "status": "ok",
+                    "source": "file_report",
+                    "stats": stats,
+                    "sha256": normalized_hash,
+                    "meaningful_name": attrs.get("meaningful_name"),
+                },
+            )
+            _CACHE[cache_key] = (now, result)
+            return result
+
+        if report_resp.status_code in (400, 404):
+            return _default_result("file_not_found")
+
+        return _default_result(f"file_report_failed_{report_resp.status_code}")
 
     except requests.RequestException as exc:
         return _default_result(f"request_error:{type(exc).__name__}")

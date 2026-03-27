@@ -6,11 +6,8 @@ TRUSTED_DOMAINS = [
     "accounts.google.com"
 ]
 
-from app.core.domain_whitelist import TRUSTED_DOMAINS
 from urllib.parse import urlparse
 
-domain = urlparse(url).netloc
-
-for trusted in TRUSTED_DOMAINS:
-    if trusted in domain:
-        return "SAFE"
+def is_whitelisted_domain(url: str) -> bool:
+    domain = urlparse(url).netloc.lower()
+    return any(trusted in domain for trusted in TRUSTED_DOMAINS)

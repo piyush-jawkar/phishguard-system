@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from urllib.parse import urlparse
 import heapq
+from typing import Optional
 
 # Core Hybrid Engine Imports
 from app.core.text_ml_classifier import predict_text
@@ -13,7 +14,8 @@ from app.core.link_analyzer import analyze_links
 from app.core.risk_engine import calculate_risk
 from app.core.ml_classifier import predict_url
 from app.core.brand_detector import detect_brand_spoof
-from app.core.vt_service import get_vt_score
+from app.core.vt_service import get_vt_score, get_vt_file_hash_score
+from app.core.attachment_analyzer import analyze_attachments
 
 
 # ------------------------------------------------
@@ -69,6 +71,7 @@ class EmailRequest(BaseModel):
     url: str
     body: str
     links: list[str]
+    attachments: Optional[list[dict]] = None
 
 
 # ------------------------------------------------
@@ -98,6 +101,7 @@ def analyze_url(url: str = Query(...)):
         unicode_score=0.0,
         reputation_score=reputation_score,
         brand_spoof_score=brand_spoof_score,
+        attachment_score=0.0,
         vt_score=vt_score,
     )
 
@@ -123,6 +127,7 @@ def analyze_email(data: EmailRequest):
     print("Tab URL:", data.url)
     print("Extracted Links:", data.links)
     print("Body preview:", data.body[:200])
+    print("Attachments:", len(data.attachments or []))
     print("==================================\n")
 
     # 1️⃣ Content Analysis
@@ -144,6 +149,8 @@ def analyze_email(data: EmailRequest):
     vt_scores = []
     vt_evidence = []
     candidate_links: list[tuple[float, str]] = []
+    attachment_vt_scores = []
+    attachment_vt_evidence = []
 
     for link in data.links:
         if not link.startswith(("http://", "https://")):
@@ -180,6 +187,27 @@ def analyze_email(data: EmailRequest):
     brand_spoof_score = max(brand_spoof_scores) if brand_spoof_scores else 0.0
     vt_score = max(vt_scores) if vt_scores else 0.0
 
+    # 6️⃣ Attachment analysis (local + VT file hash)
+    attachments = data.attachments or []
+    attachment_local_score, attachment_evidence = analyze_attachments(attachments)
+    for item in attachments:
+        file_hash = str(item.get("sha256", "") or "").strip()
+        filename = str(item.get("filename", "") or "")
+        if not file_hash:
+            if filename:
+                attachment_vt_evidence.append(
+                    {"filename": filename, "status": "fallback", "reason": "missing_file_hash"}
+                )
+            continue
+        vt_file_score, vt_file_info = get_vt_file_hash_score(file_hash)
+        attachment_vt_scores.append(vt_file_score)
+        attachment_vt_evidence.append(
+            {"filename": filename, "sha256": file_hash, **vt_file_info}
+        )
+
+    attachment_vt_score = max(attachment_vt_scores) if attachment_vt_scores else 0.0
+    attachment_score = max(attachment_local_score, attachment_vt_score)
+
     # 6️⃣ Final Risk Calculation
     final_risk = calculate_risk(
         url_score=url_score,
@@ -189,6 +217,7 @@ def analyze_email(data: EmailRequest):
         unicode_score=unicode_score,
         reputation_score=reputation_score,
         brand_spoof_score=brand_spoof_score,
+        attachment_score=attachment_score,
         vt_score=vt_score,
     )
 
@@ -201,6 +230,7 @@ def analyze_email(data: EmailRequest):
     print("reputation_score:", reputation_score)
     print("brand_spoof_score:", brand_spoof_score)
     print("vt_score:", vt_score)
+    print("attachment_score:", attachment_score)
     if vt_evidence:
         compact_vt = []
         for item in vt_evidence[:3]:
@@ -214,6 +244,21 @@ def analyze_email(data: EmailRequest):
                 "suspicious": stats.get("suspicious"),
             })
         print("vt_evidence_summary:", compact_vt)
+    if attachment_vt_evidence:
+        compact_attachment_vt = []
+        for item in attachment_vt_evidence[:3]:
+            stats = item.get("stats", {})
+            compact_attachment_vt.append(
+                {
+                    "status": item.get("status"),
+                    "source": item.get("source"),
+                    "reason": item.get("reason"),
+                    "filename": item.get("filename"),
+                    "malicious": stats.get("malicious"),
+                    "suspicious": stats.get("suspicious"),
+                }
+            )
+        print("attachment_vt_evidence_summary:", compact_attachment_vt)
     print("FINAL RISK:", final_risk)
     print("==================================\n")
 
@@ -228,6 +273,9 @@ def analyze_email(data: EmailRequest):
             "reputation_score": reputation_score,
             "brand_spoof_score": brand_spoof_score,
             "vt_score": vt_score,
-            "vt_evidence": vt_evidence[:5]
+            "vt_evidence": vt_evidence[:5],
+            "attachment_score": attachment_score,
+            "attachment_evidence": attachment_evidence[:5],
+            "attachment_vt_evidence": attachment_vt_evidence[:5]
         }
     }

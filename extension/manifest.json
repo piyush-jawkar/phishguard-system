@@ -11,12 +11,23 @@
   "permissions": [
     "activeTab",
     "tabs",
-    "scripting"
+    "scripting",
+    "identity"
   ],
 
   "host_permissions": [
-    "*://mail.google.com/*"
+    "*://mail.google.com/*",
+    "https://www.googleapis.com/*"
   ],
+
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+
+  "oauth2": {
+    "client_id": "1000458422635-6nlmt1k28vojk6jsu0t5ceo6m6vq54ep.apps.googleusercontent.com",
+    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+  },
 
   "content_scripts": [
     {

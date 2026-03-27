@@ -231,3 +231,63 @@ risk_level response -> popup UI rendering.
   - `files\email_benchmark_template.csv` (30-case matrix template)
   - `files\demo_checklist_6_cases.txt` (professor demo sequence)
 
+============================================================
+15) ATTACHMENT + GMAIL API + UX UPDATE (2026-03-27)
+============================================================
+- Backend attachment analyzer implemented:
+  - `backend\app\core\attachment_analyzer.py`
+    - Local attachment scoring by extension, filename keywords, and MIME risk.
+    - Returns `attachment_score` + per-file evidence.
+
+- VT file-hash support implemented:
+  - `backend\app\core\vt_service.py`
+    - Added `get_vt_file_hash_score(file_hash)` using VT `/files/{sha256}`.
+    - Cache now supports namespaced keys for URL and file hash lookups.
+
+- Risk engine integration completed (URL pipeline preserved):
+  - `backend\app\core\risk_engine.py`
+    - Added `attachment_score` input.
+    - Added attachment hard-high override at `0.95`.
+    - Preserved existing URL/VT/link/brand thresholds and URL top-3 VT URL pipeline.
+
+- Email API schema + flow updated:
+  - `backend\app\main.py`
+    - `EmailRequest` now accepts optional `attachments`.
+    - Attachment local score + VT hash score merged into `attachment_score`.
+    - Added attachment evidence fields in debug response.
+
+- Extension attachment ingestion fixed:
+  - `extension\scripts\content.js`
+    - Added robust Gmail attachment filename extraction.
+    - Added Gmail message context extraction (`message_id`, `thread_id`).
+  - `extension\popup\popup.js`
+    - Sends attachments payload to backend.
+
+- Gmail API OAuth integration (Step 2) completed:
+  - `extension\manifest.json`
+    - Added `identity` permission, OAuth2 client config, Gmail scope, Google API host permission.
+    - Added background service worker registration.
+  - `extension\scripts\background.js`
+    - Added OAuth token flow and Gmail profile test endpoint.
+
+- Gmail API attachment hash pipeline (Step 3) completed:
+  - `extension\scripts\background.js`
+    - Fetches message payload via Gmail API.
+    - Retrieves attachment bytes via attachmentId.
+    - Computes SHA-256 in extension (`crypto.subtle.digest`) and returns metadata to popup.
+  - Validated with runtime logs:
+    - Attachment parts found.
+    - Hash computed.
+    - Hash payload sent.
+
+- Validation notes:
+  - Compile check initially exposed pre-existing syntax issue in `backend\app\core\domain_whitelist.py` (`return outside function`).
+  - File corrected to valid helper function (`is_whitelisted_domain`).
+  - `python -m compileall backend\app` confirmed clean afterwards.
+  - Backend debug now shows attachment path active (`Attachments: 1`, `attachment_score`, `attachment_vt_evidence_summary`).
+  - Verified VT file-hash evidence path with `source: file_report`.
+
+- Popup explainability + demo UX improvements:
+  - Risk reasons now include attachment-specific causes (e.g., suspicious attachment type/name, malicious URL reputation found).
+  - Added explicit success logs for OAuth/hash pipeline for demo narration.
+  - Applied dark theme styling and centered header text (`PhishGuard Analysis`) for presentation-ready UI.

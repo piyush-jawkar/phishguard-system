@@ -1,0 +1,248 @@
+PhishGuard - Implemented Changes and Current Feature Set
+=========================================================
+
+Purpose of this file
+--------------------
+This document summarizes what was implemented in the current PhishGuard project state, especially the extension + backend integration, so it can be compared against the interim report and updated accurately.
+
+
+1) High-level system overview
+-----------------------------
+PhishGuard is a Gmail-focused phishing detection system with:
+
+- Browser extension (Chrome + Firefox compatible) for email content extraction and user-facing warnings.
+- Backend API for multi-signal risk analysis and final verdict generation.
+- VirusTotal (VT) integration for risky URL checks and attachment file-hash reputation checks.
+- Explainability output in popup UI (why a mail is likely safe/phishing).
+
+Current design is hybrid:
+- Heuristic + ML/score signals are combined in backend risk engine.
+- Hard-threshold safety rules are preserved for critical signals.
+- Extension provides actionable controls (mark safe, report phishing, learn more).
+
+
+2) Core backend analysis flow (current)
+---------------------------------------
+Input from extension:
+- Sender
+- Subject
+- Body text
+- Extracted links
+- Attachment metadata (name/type/size where available)
+- Attachment hashes (SHA-256 via Gmail API, when available)
+
+Backend pipeline:
+1. Content and URL-related scoring signals are computed (existing pipeline preserved).
+2. VT URL checking runs on top risky links (optimized top-3 flow).
+3. Brand spoof signal contributes to risk scoring.
+4. Attachment analyzer computes local attachment suspicion score.
+5. VT file-hash checking (if hash provided) adds attachment reputation signal.
+6. Final risk engine combines scores and returns:
+   - risk_level (LOW / MEDIUM / HIGH)
+   - confidence
+   - reason/explanation fields
+   - evidence data (including risky links and attachment evidence)
+
+
+3) Major implemented changes (chronological summary)
+----------------------------------------------------
+
+A. Attachment analysis support added end-to-end
+- Added attachment scoring module in backend.
+- Local attachment heuristics based on extension, filename keywords, MIME/type patterns.
+- Added attachment_score input into risk engine fusion logic.
+- Preserved URL pipeline behavior and key threshold strategy.
+
+B. VT file hash integration
+- Added VirusTotal file endpoint usage with SHA-256 hash lookup.
+- Backend can now score attachment reputation by hash (file known malicious/suspicious).
+- Caching namespaced for URL/file lookups to avoid redundant VT calls.
+
+C. Extension payload expanded to include attachments
+- Content script improved to detect attachment rows/metadata in Gmail UI.
+- Popup request now forwards attachments and message context to backend.
+- Initial “Attachments: 0” issue was diagnosed and fixed by selector/payload updates.
+
+D. Gmail API OAuth integration
+- Extension manifest updated with identity/OAuth config and required permissions.
+- Background service worker added for OAuth token + Gmail API calls.
+- OAuth status indicators added in popup and logs for debugging/demo readiness.
+
+E. Real attachment hashing from Gmail API
+- Message ID extraction added from Gmail DOM context.
+- Background fetches message/attachment data from Gmail API.
+- SHA-256 hash is computed client-side using Web Crypto API.
+- Hashes are sent to backend for VT file-hash reputation check.
+
+F. Action buttons implemented (functional)
+- Mark Safe button -> sends feedback to backend (/feedback).
+- Report Phishing button -> sends feedback + triggers move-to-spam flow.
+- Learn More / PhishGuard-Education link -> opens local education page.
+
+G. Move-to-spam flow added
+- Gmail modify scope added.
+- Background action calls Gmail message modify API to apply spam label behavior.
+- User confirmed this now works with the current setup.
+
+H. UI/UX upgrades in popup
+- Dark theme styling + centered/polished layout.
+- Better explanation text for verdict rationale.
+- Risky Links section added: “Do not click” list when suspicious links are found.
+- Disclaimer text added to clarify assistant limitations.
+
+I. Local education page created
+- Added in-extension page: pages/phishguard.html.
+- Replaced external support redirect with local PhishGuard educational content.
+- Logo + favicon paths corrected to display properly.
+
+J. Link extraction consistency improvements
+- Some phishing-like links were plain text, not anchor tags.
+- Content extraction updated to parse both:
+  - anchor href links
+  - plain-text URL patterns in email body
+- Reduced inconsistency where one email showed a risky link and another did not.
+
+K. Feedback endpoint added (non-learning log)
+- Backend /feedback endpoint stores user actions in feedback_log.jsonl.
+- Useful for auditing and future tuning.
+- Current implementation logs feedback; it does not automatically retrain model yet.
+
+L. Pre-existing backend syntax blocker fixed
+- Corrected domain_whitelist.py syntax issue that blocked compile.
+- This was unrelated feature-wise but necessary to restore backend health.
+
+
+4) Current extension features (detailed)
+----------------------------------------
+
+Feature 1: One-click email risk analysis
+- User opens an email and runs analysis from popup.
+- Extension captures sender/subject/body/links/attachments context.
+- Backend returns verdict + confidence + explainability cues.
+- Intended value: fast decision support before user clicks anything risky.
+
+Feature 2: URL risk intelligence with VT support
+- Extracted URLs are scored by existing URL/link logic.
+- Top risky URLs are checked with VT (optimized for speed and API cost).
+- High-confidence risky URL scenarios can trigger strong/high verdict behavior.
+- Intended value: catches known malicious infrastructure and suspicious links.
+
+Feature 3: Attachment risk detection + VT hash reputation
+- Local heuristics flag suspicious file types/naming patterns.
+- If SHA-256 hash available, backend checks VT file reputation.
+- Attachment evidence contributes directly to final risk score.
+- Intended value: catches weaponized attachments and known bad files.
+
+Feature 4: Explainability in popup
+- Popup shows why result is safe/phishing, not only color/verdict.
+- Includes key reason chips/phrases and suspicious indicators.
+- Risky links list helps user see exactly what to avoid clicking.
+- Intended value: improves user trust and learning during demo/use.
+
+Feature 5: Action controls for user workflow
+- Mark Safe: records user disagreement/confirmation as safe.
+- Report Phishing: records feedback and triggers spam movement flow.
+- Learn More: opens PhishGuard education page with phishing guidance.
+- Intended value: converts analysis into actionable decisions.
+
+Feature 6: Gmail API integration for deeper context
+- OAuth-based Gmail access per user account.
+- Used for profile test, attachment retrieval, and message modification action.
+- Scopes are explicit and limited to required capabilities.
+- Intended value: enables advanced features beyond DOM-only scraping.
+
+Feature 7: Cross-browser readiness
+- Extension architecture and fixes support both Chrome and Firefox workflows.
+- Intended value: demo/deployment flexibility and improved portability.
+
+
+5) Security and privacy posture (current)
+-----------------------------------------
+
+Data minimization approach
+- The extension sends analysis-relevant email fields/signals to backend.
+- OAuth token usage is scoped to Gmail features required for functionality.
+
+OAuth and API access control
+- Gmail OAuth is user-consented and profile-specific.
+- Scopes used include read access and modify access (for spam action).
+- No broad, unrestricted cloud mailbox sync was added in this phase.
+
+Third-party reputation usage
+- VT checks are performed for URLs/hashes to improve phishing detection.
+- Caching reduces repeated external lookups and improves responsiveness.
+
+User feedback handling
+- Feedback is logged for review/tuning purposes.
+- No automatic self-training loop is currently enabled from feedback logs.
+
+Operational safety
+- Existing threshold strategy was preserved to avoid destabilizing tuned behavior.
+- URL pipeline was intentionally kept unchanged while adding attachments.
+
+
+6) Important thresholds and behavior notes
+------------------------------------------
+- Existing tuned hard-threshold behavior was preserved unless needed for attachment integration.
+- URL and link critical thresholds remain central to high-risk override behavior.
+- Attachment score is now an additional signal in the fusion logic.
+- Attachment VT evidence can elevate risk when file reputation is bad.
+
+Note:
+For exact numeric thresholds in final report tables, verify from current backend constants/config in code to avoid stale values.
+
+
+7) Known limitations / realistic statements for report
+------------------------------------------------------
+- Feedback logging exists, but online learning/retraining is not auto-enabled yet.
+- Risky-link extraction improved significantly, but Gmail rendering variants can still require periodic selector tuning.
+- VT-based detection quality depends on whether URL/file hash is known in VT datasets.
+- Gmail API features require proper OAuth client configuration and user consent.
+
+
+8) Suggested “report wording” alignment points
+----------------------------------------------
+When editing the interim report into final form, ensure it states:
+
+- The system is now hybrid multi-signal (content + URL + brand + attachment + VT).
+- Attachment analysis and VT file-hash reputation are implemented, not just proposed.
+- User action flow is implemented in popup (mark safe/report/learn more).
+- Education content is hosted inside extension (local page) rather than only external links.
+- Feedback is currently logged for future tuning, not auto-training in production.
+- URL pipeline optimization and tuned threshold strategy were preserved for stability.
+
+
+9) File areas where this functionality lives (for evidence/reference)
+---------------------------------------------------------------------
+Backend:
+- backend/app/main.py
+- backend/app/core/risk_engine.py
+- backend/app/core/vt_service.py
+- backend/app/core/attachment_analyzer.py
+
+Extension:
+- extension/manifest.json
+- extension/scripts/background.js
+- extension/scripts/content.js
+- extension/popup/popup.js
+- extension/popup/popup.html
+- extension/styles/style.css
+- extension/pages/phishguard.html
+
+Project docs/log:
+- docs/project_context_log.txt
+
+
+10) Quick comparison checklist template
+---------------------------------------
+Use this while revising report chapters:
+
+- Does chapter mention attachment hash + VT file checks as implemented? (Yes/No)
+- Does chapter describe risky links visibility in popup? (Yes/No)
+- Does chapter include action buttons and spam flow behavior? (Yes/No)
+- Does chapter mention local education page? (Yes/No)
+- Does chapter correctly state feedback is logged, not auto-learning? (Yes/No)
+- Does chapter preserve tuned threshold/pipeline narrative? (Yes/No)
+
+
+End of document.

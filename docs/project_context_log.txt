@@ -291,3 +291,36 @@ risk_level response -> popup UI rendering.
   - Risk reasons now include attachment-specific causes (e.g., suspicious attachment type/name, malicious URL reputation found).
   - Added explicit success logs for OAuth/hash pipeline for demo narration.
   - Applied dark theme styling and centered header text (`PhishGuard Analysis`) for presentation-ready UI.
+
+- Action buttons now fully functional end-to-end:
+  - `extension\popup\popup.html`
+    - Added stable IDs for action controls and status text region.
+  - `extension\popup\popup.js`
+    - Implemented `Mark as Safe` to save feedback to backend.
+    - Implemented `Report Phishing` to save feedback and trigger Gmail spam workflow.
+    - Implemented `Learn More` button/link handlers.
+    - Added action status messages in popup for user confirmation.
+  - `backend\app\main.py`
+    - Added `POST /feedback` endpoint.
+    - Stores user-action feedback to `backend\feedback_log.jsonl` (JSONL format) with risk/debug context.
+  - Validation:
+    - Backend logs confirm `/feedback` calls returning `200 OK`.
+
+- Gmail spam auto-move enhancement:
+  - `extension\manifest.json`
+    - Gmail OAuth scope extended to include `https://www.googleapis.com/auth/gmail.modify`.
+  - `extension\scripts\background.js`
+    - Added Gmail modify call (`users/me/messages/{id}/modify`) to add `SPAM` label and remove `INBOX`.
+    - Added message listener `GMAIL_MOVE_TO_SPAM`.
+  - `extension\popup\popup.js`
+    - On `Report Phishing`, if message ID exists, calls background spam-move action and shows success/failure status.
+  - Validation:
+    - User-confirmed behavior works in runtime.
+
+- In-extension education page added:
+  - Added `extension\pages\phishguard.html` (local dark-theme educational page).
+  - `Learn More` button and `phishguard.com/education` link now open this local page instead of external support URL.
+  - Page content includes:
+    - How PhishGuard analyzes emails,
+    - Risk level meanings,
+    - Safe anti-phishing habits.

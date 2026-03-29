@@ -44,7 +44,7 @@ ext.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const bodyText = emailContainer.innerText;
     const linkElements = emailContainer.querySelectorAll("a");
 
-    const links = Array.from(linkElements)
+    const anchorLinks = Array.from(linkElements)
         .map(a => a.href)
         .filter(link =>
             link &&
@@ -52,6 +52,12 @@ ext.runtime.onMessage.addListener((request, sender, sendResponse) => {
             !link.includes("accounts.google.com") &&
             !link.includes("support.google.com")
         );
+    const textUrlMatches = bodyText.match(/\bhttps?:\/\/[^\s<>"')]+/gi) || [];
+    const links = Array.from(
+        new Set(
+            [...anchorLinks, ...textUrlMatches].map(link => link.trim().replace(/[),.;!?]+$/, ""))
+        )
+    );
 
     const attachmentSelectors = [
         ".aQH",

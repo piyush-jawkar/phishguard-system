@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard Education</title>
+    <link rel="icon" type="image/png" href="../icons/logo.png">
+    <style>
+        body {
+            margin: 0;
+            font-family: Inter, "Segoe UI", Arial, sans-serif;
+            background: #0b1020;
+            color: #e5e7eb;
+            line-height: 1.5;
+        }
+        .wrap {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 20px 40px;
+        }
+        h1 {
+            margin: 0 0 10px;
+            font-size: 30px;
+            color: #f8fafc;
+        }
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 22px;
+        }
+        .hero {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+        .logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            object-fit: contain;
+            padding: 6px;
+        }
+        .card {
+            background: #111827;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+        h2 {
+            margin: 0 0 10px;
+            font-size: 20px;
+            color: #f1f5f9;
+        }
+        ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 6px;
+        }
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+        .high { background: #7f1d1d; color: #fecaca; }
+        .medium { background: #78350f; color: #fde68a; }
+        .safe { background: #14532d; color: #bbf7d0; }
+        .footer {
+            margin-top: 16px;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="hero">
+            <img src="../icons/logo.png" alt="PhishGuard Logo" class="logo">
+            <h1>PhishGuard Education</h1>
+        </div>
+        <p class="subtitle">Understand phishing risks and how PhishGuard protects you.</p>
+
+        <div class="card">
+            <h2>How PhishGuard analyzes emails</h2>
+            <ul>
+                <li>Checks suspicious links and domain reputation.</li>
+                <li>Detects brand spoof patterns and risky language.</li>
+                <li>Analyzes attachment names/types and file-hash reputation.</li>
+                <li>Combines all evidence into a final risk level.</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Risk levels</h2>
+            <p><span class="tag high">HIGH</span>Strong phishing evidence. Avoid clicking links or downloading attachments.</p>
+            <p><span class="tag medium">MEDIUM</span>Some suspicious signals. Verify sender and purpose before acting.</p>
+            <p><span class="tag safe">SAFE</span>No strong malicious indicators found in current analysis.</p>
+        </div>
+
+        <div class="card">
+            <h2>Safe habits</h2>
+            <ul>
+                <li>Never share passwords, OTPs, or bank details via email links.</li>
+                <li>Open suspicious files only after verifying with the sender.</li>
+                <li>Hover links and inspect domain spelling carefully.</li>
+                <li>Use "Report Phishing" when unsure.</li>
+            </ul>
+        </div>
+
+        <p class="footer">PhishGuard is an assistive security tool and should be used with human judgment.</p>
+    </div>
+</body>
+</html>

@@ -64,6 +64,21 @@ async function gmailApiGet(token, path) {
     return response.json();
 }
 
+async function gmailApiPost(token, path, body) {
+    const response = await fetch(`https://gmail.googleapis.com/gmail/v1/${path}`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body || {})
+    });
+    if (!response.ok) {
+        throw new Error(`Gmail API failed ${response.status} for ${path}`);
+    }
+    return response.json();
+}
+
 function collectAttachmentParts(part, acc) {
     if (!part) {
         return;
@@ -160,6 +175,32 @@ ext.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     ok: false,
                     error: String(error?.message || error),
                     attachments: []
+                });
+            }
+        })();
+
+        return true;
+    }
+
+    if (request?.type === "GMAIL_MOVE_TO_SPAM") {
+        (async () => {
+            try {
+                const messageId = String(request?.messageId || "").trim();
+                if (!messageId) {
+                    throw new Error("Missing Gmail messageId");
+                }
+                const token = await getAuthTokenInteractive();
+                await gmailApiPost(token, `users/me/messages/${messageId}/modify`, {
+                    addLabelIds: ["SPAM"],
+                    removeLabelIds: ["INBOX"]
+                });
+                console.log("[PhishGuard][BG] Message moved to spam:", messageId);
+                sendResponse({ ok: true });
+            } catch (error) {
+                console.warn("[PhishGuard][BG] GMAIL_MOVE_TO_SPAM failed:", String(error?.message || error));
+                sendResponse({
+                    ok: false,
+                    error: String(error?.message || error)
                 });
             }
         })();

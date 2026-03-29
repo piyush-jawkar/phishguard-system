@@ -9,39 +9,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const riskPill = document.querySelector(".risk-pill");
     const riskList = document.querySelector(".risk-list");
+    const riskyLinksList = document.getElementById("risky-links");
     const explanation = document.getElementById("explanation");
     const oauthStatus = document.getElementById("oauth-status");
+    const safeBtn = document.getElementById("safe-btn");
+    const reportBtn = document.getElementById("report-btn");
+    const learnMoreBtn = document.getElementById("learn-more-btn");
+    const learnMoreLink = document.getElementById("learn-more-link");
+    const actionStatus = document.getElementById("action-status");
+    let lastAnalysisContext = null;
 
     function updateUI(riskLevel, debug = {}) {
 
         riskList.innerHTML = "";
+        renderRiskyLinks(debug);
 
         const reasons = deriveRiskReasons(riskLevel, debug);
         reasons.forEach(addRisk);
+        explanation.textContent = buildExplanation(riskLevel, debug, reasons);
 
         if (riskLevel === "HIGH") {
 
             riskPill.textContent = "HIGH RISK";
             riskPill.style.background = "#e74c3c";
 
-            explanation.textContent =
-                reasons[0] || "This email contains strong phishing indicators.";
-
         } else if (riskLevel === "MEDIUM") {
 
             riskPill.textContent = "MEDIUM RISK";
             riskPill.style.background = "#f39c12";
 
-            explanation.textContent =
-                reasons[0] || "Exercise caution. Verify sender before clicking links.";
-
         } else {
 
             riskPill.textContent = "SAFE";
             riskPill.style.background = "#2ecc71";
-
-            explanation.textContent =
-                reasons[0] || "No suspicious patterns detected in this email.";
         }
     }
 
@@ -93,6 +93,94 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         return reasons.slice(0, 4);
+    }
+
+    function renderRiskyLinks(debug) {
+        if (!riskyLinksList) {
+            return;
+        }
+        riskyLinksList.innerHTML = "";
+
+        const vtEvidence = Array.isArray(debug.vt_evidence) ? debug.vt_evidence : [];
+        const riskyCandidates = vtEvidence
+            .filter(item => {
+                const stats = item?.stats || {};
+                const malicious = Number(stats.malicious || 0);
+                const suspicious = Number(stats.suspicious || 0);
+                return malicious > 0 || suspicious > 0;
+            })
+            .map(item => item?.url)
+            .filter(Boolean);
+
+        const uniqueRisky = Array.from(new Set(riskyCandidates)).slice(0, 3);
+
+        const analysisLinks = Array.isArray(lastAnalysisContext?.links) ? lastAnalysisContext.links : [];
+        const visibleSuspiciousLinks = analysisLinks
+            .filter(link => /^https?:\/\//i.test(String(link)))
+            .slice(0, 3);
+
+        if (uniqueRisky.length === 0 && Number(debug.url_score || 0) >= 0.82 && visibleSuspiciousLinks.length > 0) {
+            visibleSuspiciousLinks.forEach((link) => {
+                const item = document.createElement("li");
+                item.textContent = link;
+                riskyLinksList.appendChild(item);
+            });
+            return;
+        }
+
+        if (uniqueRisky.length === 0 && Number(debug.url_score || 0) >= 0.82) {
+            const item = document.createElement("li");
+            item.textContent = "High-risk URL detected (possible typo-spoof or phishing domain).";
+            riskyLinksList.appendChild(item);
+            return;
+        }
+
+        if (uniqueRisky.length === 0 && Number(debug.link_score || 0) >= 0.9) {
+            const item = document.createElement("li");
+            item.textContent = "Suspicious links detected, avoid clicking unknown URLs.";
+            riskyLinksList.appendChild(item);
+            return;
+        }
+
+        if (uniqueRisky.length === 0) {
+            const item = document.createElement("li");
+            item.textContent = "No risky links identified.";
+            riskyLinksList.appendChild(item);
+            return;
+        }
+
+        uniqueRisky.forEach((url) => {
+            const item = document.createElement("li");
+            item.textContent = url;
+            riskyLinksList.appendChild(item);
+        });
+    }
+
+    function buildExplanation(riskLevel, debug, reasons) {
+        const attachmentRisk = Number(debug.attachment_score || 0) >= 0.45;
+        const contentRisk = Number(debug.content_score || 0) >= 0.5 || Number(debug.text_ml_score || 0) >= 0.6;
+        const urlRisk = Number(debug.url_score || 0) >= 0.82 || Number(debug.vt_score || 0) >= 0.85;
+
+        if (riskLevel === "SAFE") {
+            return "This email appears safe: no strong malicious URL, attachment, or content patterns were detected.";
+        }
+
+        const parts = [];
+        if (urlRisk) {
+            parts.push("risky or malicious link reputation");
+        }
+        if (attachmentRisk) {
+            parts.push("suspicious attachment indicators");
+        }
+        if (contentRisk) {
+            parts.push("phishing-like language patterns");
+        }
+
+        if (parts.length === 0) {
+            return reasons[0] || "Suspicious behavior detected. Verify sender before acting.";
+        }
+
+        return `Email flagged due to ${parts.join(", ")}. Avoid clicking links or downloading files until verified.`;
     }
 
     async function getEmailData(tabId) {
@@ -160,6 +248,103 @@ document.addEventListener("DOMContentLoaded", async () => {
             return [];
         }
     }
+
+    function setActionStatus(text, color = "#93c5fd") {
+        if (!actionStatus) {
+            return;
+        }
+        actionStatus.textContent = text;
+        actionStatus.style.color = color;
+    }
+
+    function buildFingerprint(emailData) {
+        const body = String(emailData?.body || "");
+        const links = Array.isArray(emailData?.links) ? emailData.links : [];
+        return btoa(unescape(encodeURIComponent(`${body.slice(0, 256)}|${links.join("|")}`))).slice(0, 80);
+    }
+
+    async function postFeedback(actionType) {
+        if (!lastAnalysisContext) {
+            setActionStatus("Analyze an email first", "#f59e0b");
+            return;
+        }
+        try {
+            const response = await fetch("http://127.0.0.1:8000/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: actionType,
+                    risk_level: lastAnalysisContext.riskLevel,
+                    email_fingerprint: lastAnalysisContext.emailFingerprint,
+                    url: lastAnalysisContext.primaryUrl,
+                    message_id: lastAnalysisContext.messageId || null,
+                    thread_id: lastAnalysisContext.threadId || null,
+                    reasons: lastAnalysisContext.reasons || [],
+                    attachment_count: lastAnalysisContext.attachmentCount || 0,
+                    has_attachment_hash: Boolean(lastAnalysisContext.hasAttachmentHash),
+                    debug: lastAnalysisContext.debug || {}
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`feedback_failed_${response.status}`);
+            }
+            setActionStatus(
+                actionType === "MARK_SAFE" ? "Marked as safe and feedback saved" : "Phishing report feedback saved",
+                "#22c55e"
+            );
+        } catch (error) {
+            console.warn("Feedback submit failed:", error);
+            setActionStatus("Failed to save feedback", "#ef4444");
+        }
+    }
+
+    safeBtn?.addEventListener("click", async () => {
+        await postFeedback("MARK_SAFE");
+    });
+
+    reportBtn?.addEventListener("click", async () => {
+        await postFeedback("REPORT_PHISHING");
+        if (lastAnalysisContext?.messageId) {
+            try {
+                const spamResult = await ext.runtime.sendMessage({
+                    type: "GMAIL_MOVE_TO_SPAM",
+                    messageId: lastAnalysisContext.messageId
+                });
+                if (spamResult?.ok) {
+                    setActionStatus("Reported and moved message to spam", "#22c55e");
+                } else {
+                    setActionStatus(`Reported, spam move failed (${spamResult?.error || "unknown"})`, "#f59e0b");
+                }
+            } catch (error) {
+                console.warn("Gmail spam move messaging failed:", error);
+                setActionStatus("Reported, spam move request failed", "#f59e0b");
+            }
+        } else {
+            setActionStatus("Reported. Message ID unavailable for auto spam move", "#f59e0b");
+        }
+        try {
+            const tabs = await ext.tabs.query({ active: true, currentWindow: true });
+            const currentUrl = tabs?.[0]?.url || "https://mail.google.com/";
+            const reportUrl = `https://mail.google.com/mail/u/0/#spam`;
+            await ext.tabs.create({ url: reportUrl });
+            console.log("Opened Gmail spam/report area from:", currentUrl);
+        } catch (error) {
+            console.warn("Unable to open Gmail report flow:", error);
+        }
+    });
+
+    learnMoreBtn?.addEventListener("click", async () => {
+        await ext.tabs.create({
+            url: ext.runtime.getURL("pages/phishguard.html")
+        });
+    });
+
+    learnMoreLink?.addEventListener("click", async (event) => {
+        event.preventDefault();
+        await ext.tabs.create({
+            url: ext.runtime.getURL("pages/phishguard.html")
+        });
+    });
 
     try {
         await testGmailOAuth();
@@ -233,6 +418,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const data = await apiResponse.json();
 
         updateUI(data.risk_level, data.debug || {});
+        const reasons = deriveRiskReasons(data.risk_level, data.debug || {});
+        lastAnalysisContext = {
+            riskLevel: data.risk_level,
+            debug: data.debug || {},
+            reasons,
+            primaryUrl,
+            links: emailData.links || [],
+            messageId: emailData.message_id || null,
+            threadId: emailData.thread_id || null,
+            attachmentCount: mergedAttachments.length,
+            hasAttachmentHash: mergedAttachments.some(item => Boolean(item.sha256)),
+            emailFingerprint: buildFingerprint(emailData)
+        };
+        setActionStatus("Actions ready");
 
     } catch (error) {
 
@@ -242,6 +441,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         riskPill.style.background = "gray";
         explanation.textContent = "Could not analyze email.";
         riskList.innerHTML = "";
+        setActionStatus("Analysis failed", "#ef4444");
     } finally {
         analysisInProgress = false;
     }

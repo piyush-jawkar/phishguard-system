@@ -3,9 +3,10 @@
   "name": "PhishGuard",
   "version": "1.0",
   "description": "AI-powered phishing email detection extension",
+  "icons": { "32":"icons/logo.png"},
 
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html", "default_icon":"icons/logo.png"
   },
 
   "permissions": [
@@ -26,7 +27,10 @@
 
   "oauth2": {
     "client_id": "1000458422635-6nlmt1k28vojk6jsu0t5ceo6m6vq54ep.apps.googleusercontent.com",
-    "scopes": ["https://www.googleapis.com/auth/gmail.readonly"]
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ]
   },
 
   "content_scripts": [

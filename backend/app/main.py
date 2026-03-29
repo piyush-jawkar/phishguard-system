@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from urllib.parse import urlparse
 import heapq
-from typing import Optional
+import json
+import os
+import time
+from typing import Optional, Any
 
 # Core Hybrid Engine Imports
 from app.core.text_ml_classifier import predict_text
@@ -74,12 +77,49 @@ class EmailRequest(BaseModel):
     attachments: Optional[list[dict]] = None
 
 
+class FeedbackRequest(BaseModel):
+    action: str
+    risk_level: Optional[str] = None
+    email_fingerprint: Optional[str] = None
+    url: Optional[str] = None
+    message_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    reasons: Optional[list[str]] = None
+    attachment_count: Optional[int] = None
+    has_attachment_hash: Optional[bool] = None
+    debug: Optional[dict[str, Any]] = None
+
+
+FEEDBACK_LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "feedback_log.jsonl")
+
+
 # ------------------------------------------------
 # HEALTH CHECK
 # ------------------------------------------------
 @app.get("/")
 def health_check():
     return {"status": "PhishGuard API Running"}
+
+
+@app.post("/feedback")
+def submit_feedback(data: FeedbackRequest):
+    payload = {
+        "timestamp": int(time.time()),
+        "action": data.action,
+        "risk_level": data.risk_level,
+        "email_fingerprint": data.email_fingerprint,
+        "url": data.url,
+        "message_id": data.message_id,
+        "thread_id": data.thread_id,
+        "reasons": data.reasons or [],
+        "attachment_count": data.attachment_count or 0,
+        "has_attachment_hash": bool(data.has_attachment_hash),
+        "debug": data.debug or {},
+    }
+    with open(FEEDBACK_LOG_PATH, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+    return {"status": "ok", "saved_to": FEEDBACK_LOG_PATH}
 
 
 # ------------------------------------------------

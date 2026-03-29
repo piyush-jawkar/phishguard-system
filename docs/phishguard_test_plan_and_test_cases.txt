@@ -1,0 +1,490 @@
+PhishGuard Test Plan and Test Cases
+===================================
+
+Document Purpose
+----------------
+This document provides a complete, project-ready test plan and test case set for PhishGuard (Extension + Backend), including:
+- Test steps
+- Test data
+- Expected output
+- Actual result (to be filled during execution)
+- Pass/Fail (to be filled during execution)
+
+
+1) Test Plan
+------------
+
+1.1 Objective
+- Validate that PhishGuard correctly detects phishing/safe emails using multi-signal analysis.
+- Validate integration between extension UI, Gmail context extraction, backend analysis, VT URL/file-hash checks, and action buttons.
+- Validate user-facing explainability, risky-link rendering, and spam-action flow.
+
+1.2 Scope
+In Scope:
+- Gmail content extraction in extension
+- Backend `/analyze-email` risk evaluation
+- Attachment analyzer + VT file-hash checks
+- URL/link risk pipeline (existing tuned behavior)
+- Popup action buttons (Mark Safe, Report Phishing, Learn More)
+- Local education page rendering
+- Feedback endpoint logging
+
+Out of Scope:
+- Model retraining automation from feedback
+- Non-Gmail mailbox providers
+- Enterprise SSO and multi-tenant backend auth
+
+1.3 Test Types
+- Functional Testing
+- Integration Testing
+- API Testing
+- UI/UX Testing
+- Negative Testing
+- Security/Privacy Validation
+- Compatibility Testing (Chrome + Firefox)
+- Performance/Responsiveness (basic practical checks)
+
+1.4 Test Environment
+- OS: Windows 10/11
+- Browser: Chrome (latest), Firefox (latest)
+- Extension loaded in developer mode
+- Backend API running locally (or deployed endpoint configured in extension)
+- VT API key configured in backend environment
+- Test Gmail account with sample emails
+
+1.5 Entry Criteria
+- Extension builds/loads without manifest errors
+- Backend server starts successfully
+- OAuth configuration completed and consent screen/test user configured
+- Network connectivity available for Gmail API and VT calls
+
+1.6 Exit Criteria
+- All Critical and High-priority tests pass
+- No blocker defects in analysis flow, report-phishing action, or core verdict display
+- Demo checklist scenarios execute successfully
+
+
+2) Test Data Set
+----------------
+
+TD-01 Safe Newsletter Email
+- Sender: trusted domain newsletter
+- Body: informational text, normal CTA links
+- Links: known benign
+- Attachments: none
+
+TD-02 Credential Phish Email
+- Sender spoof-like display name
+- Body: urgent account lock warning
+- Links: lookalike domain (e.g., lnstagram.com style)
+- Attachments: none
+
+TD-03 Malware Attachment Email
+- Sender: unknown external
+- Body: invoice/payment urgency
+- Links: optional
+- Attachment: suspicious filename/ext (e.g., Invoice_2026.exe or macro-enabled doc equivalent for test)
+- Hash reputation: known suspicious/malicious where possible
+
+TD-04 Safe Attachment Email
+- Sender: trusted contact
+- Body: normal communication
+- Attachment: benign file (PDF/JPG)
+- Hash reputation: unknown or benign
+
+TD-05 Mixed Signal Email
+- Sender: somewhat suspicious
+- Body: social engineering language
+- Links: one benign + one suspicious
+- Attachment: neutral
+
+TD-06 Plain-text URL Email
+- Body contains risky URL as text (not anchor tag)
+- Used to validate plain-text URL extraction consistency
+
+TD-07 Noisy/Minimal Content Email
+- Very short content with little context
+- No links, no attachments
+
+TD-08 API Failure Simulation
+- Backend running without VT key or with forced VT timeout
+- Used to verify graceful fallback behavior
+
+
+3) Test Execution Matrix (Priorities)
+-------------------------------------
+- Critical: TC-001, TC-002, TC-003, TC-004, TC-009, TC-010, TC-012, TC-015
+- High: TC-005, TC-006, TC-007, TC-008, TC-011, TC-013, TC-016
+- Medium: TC-014, TC-017, TC-018, TC-019, TC-020
+
+
+4) Detailed Test Cases
+----------------------
+Note:
+- Fill "Actual Result" and "Pass/Fail" during execution.
+- Use "N/A" if a step is not applicable in a specific run.
+
+--------------------------------------------------------------------------------
+TC-001 | Analyze Safe Email (Baseline)
+--------------------------------------------------------------------------------
+Module: Extension + Backend
+Precondition: Extension loaded, backend reachable, Gmail tab open
+Test Data: TD-01
+Steps:
+1. Open safe newsletter email in Gmail.
+2. Open extension popup.
+3. Click Analyze/Scan action.
+Expected Output:
+- Verdict should be LOW (or equivalent safe indication).
+- Explanation should indicate low-risk reasoning.
+- Risky links section should be empty or not alarming.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-002 | Detect Credential-Phish Link
+--------------------------------------------------------------------------------
+Module: URL Pipeline + Explainability
+Precondition: Same as TC-001
+Test Data: TD-02
+Steps:
+1. Open phishing-style email with lookalike domain.
+2. Run analysis.
+3. Observe verdict and risky links list.
+Expected Output:
+- Verdict should be MEDIUM/HIGH depending on risk score.
+- Suspicious link should appear in risky links section.
+- Explanation should mention suspicious link/URL signal.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-003 | Attachment Local Heuristic Detection
+--------------------------------------------------------------------------------
+Module: Attachment Analyzer
+Precondition: Attachment extraction enabled
+Test Data: TD-03
+Steps:
+1. Open email containing suspicious attachment filename/type.
+2. Run analysis.
+3. Inspect response fields in UI/logs for attachment contribution.
+Expected Output:
+- Non-zero attachment_score contribution.
+- Verdict should reflect elevated risk if other signals align.
+- Explanation should include attachment-related reason.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-004 | VT File-Hash Reputation Integration
+--------------------------------------------------------------------------------
+Module: Gmail API + Hash + VT File Check
+Precondition: OAuth done, gmail.readonly scope active, VT key configured
+Test Data: TD-03 (with hash-known sample where possible)
+Steps:
+1. Open email with attachment.
+2. Run analysis and ensure hash retrieval path executes.
+3. Check backend debug evidence for file hash/VT file score.
+Expected Output:
+- Attachment hash is generated and sent.
+- VT file lookup executes successfully.
+- attachment_vt_evidence_summary/source indicates file_report when found.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-005 | VT URL Top-3 Optimization Behavior
+--------------------------------------------------------------------------------
+Module: VT URL Service
+Precondition: Email contains >3 links with mixed risk
+Test Data: Custom email with 5-8 links
+Steps:
+1. Run analysis for multi-link email.
+2. Inspect logs/debug for number of VT URL checks.
+Expected Output:
+- Only top-3 risky candidates are checked through VT URL flow.
+- Final verdict still computed normally.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-006 | Plain-text URL Extraction Consistency
+--------------------------------------------------------------------------------
+Module: Content Extraction
+Precondition: Email contains URL only as plain text
+Test Data: TD-06
+Steps:
+1. Open plain-text URL email.
+2. Run analysis.
+3. Verify risky links list and evidence.
+Expected Output:
+- Plain-text URL is extracted (not missed due to no anchor tag).
+- If risky, it appears in risky links output.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-007 | Mixed Signals Fusion
+--------------------------------------------------------------------------------
+Module: Risk Engine
+Precondition: Backend up with standard thresholds
+Test Data: TD-05
+Steps:
+1. Analyze mixed-signal email.
+2. Review final risk level and reasons.
+Expected Output:
+- Final verdict reflects weighted multi-signal fusion.
+- Reasons should map to strongest contributing signals.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-008 | Noisy/Minimal Content Robustness
+--------------------------------------------------------------------------------
+Module: Backend Input Handling
+Precondition: Same as above
+Test Data: TD-07
+Steps:
+1. Analyze very short/no-link/no-attachment email.
+Expected Output:
+- Analysis completes without crash.
+- Verdict is produced with sensible low/neutral reasoning.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-009 | Mark Safe Button Workflow
+--------------------------------------------------------------------------------
+Module: Popup Actions + Feedback API
+Precondition: Analysis completed for any email
+Test Data: Any analyzed safe/false-positive example
+Steps:
+1. Click Mark Safe.
+2. Observe UI feedback status and backend log entry.
+Expected Output:
+- `/feedback` called successfully.
+- UI confirms action success.
+- feedback_log.jsonl receives corresponding entry.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-010 | Report Phishing + Move to Spam
+--------------------------------------------------------------------------------
+Module: Popup Action + Gmail Modify API
+Precondition: OAuth granted with gmail.modify scope
+Test Data: Any suspicious email
+Steps:
+1. Click Report Phishing.
+2. Verify feedback submission.
+3. Verify message is moved/labeled as spam via Gmail action.
+Expected Output:
+- Feedback saved successfully.
+- Gmail modify API action succeeds.
+- User sees spam action confirmation (and/or spam folder opens).
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-011 | Learn More / Education Page
+--------------------------------------------------------------------------------
+Module: Extension Static Page
+Precondition: Extension installed
+Test Data: N/A
+Steps:
+1. Click Learn More / PhishGuard Education link.
+2. Verify local page opens and assets load.
+Expected Output:
+- Opens extension local page (`pages/phishguard.html`).
+- Logo, favicon, and educational text display correctly.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-012 | OAuth Status Visibility
+--------------------------------------------------------------------------------
+Module: Background Auth + Popup UI
+Precondition: Extension reloaded
+Test Data: Valid Google test user
+Steps:
+1. Trigger OAuth/auth test.
+2. Observe popup auth status text and logs.
+Expected Output:
+- Auth success status visible in popup/log.
+- Correct signed-in account context shown.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-013 | Backend Failure Handling (Analyze API Down)
+--------------------------------------------------------------------------------
+Module: Extension Error Handling
+Precondition: Stop backend service
+Test Data: Any email
+Steps:
+1. Click analyze while backend is unavailable.
+Expected Output:
+- User gets clear error state/message.
+- Extension does not crash or freeze.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-014 | VT Timeout/Unknown Handling
+--------------------------------------------------------------------------------
+Module: VT Integration Resilience
+Precondition: Simulate VT timeout/unknown response
+Test Data: TD-08
+Steps:
+1. Run analysis with VT degraded.
+2. Observe final verdict and logs.
+Expected Output:
+- Pipeline continues using available signals.
+- No hard crash from VT failures/timeouts.
+- Result still returned with best-effort reasoning.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-015 | Threshold Preservation Regression Check
+--------------------------------------------------------------------------------
+Module: Risk Engine Rules
+Precondition: Baseline thresholds intact
+Test Data: Prepared cases around threshold boundaries
+Steps:
+1. Run known benchmark cases from previous validated set.
+2. Compare verdict categories against baseline expectation.
+Expected Output:
+- Existing tuned threshold behavior remains stable.
+- No unexpected drift caused by attachment integration.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-016 | Cross-Browser Compatibility (Chrome vs Firefox)
+--------------------------------------------------------------------------------
+Module: Extension Compatibility
+Precondition: Extension packaged/loaded in both browsers
+Test Data: TD-01 to TD-03 subset
+Steps:
+1. Execute same analysis and actions in Chrome.
+2. Repeat in Firefox.
+3. Compare outputs/actions.
+Expected Output:
+- Core features work in both browsers.
+- No critical browser-specific breakage.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-017 | Risky Links Section Rendering Rules
+--------------------------------------------------------------------------------
+Module: Popup UI
+Precondition: One risky and one safe sample ready
+Test Data: TD-01, TD-02
+Steps:
+1. Analyze safe email and verify risky links section state.
+2. Analyze phishing email and verify risky links are displayed.
+Expected Output:
+- Safe email: no alarming risky links list.
+- Phishing email: clear “do not click” risky links shown.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-018 | Data Privacy Sanity Check
+--------------------------------------------------------------------------------
+Module: Security/Privacy
+Precondition: Network inspection tooling optional
+Test Data: Any email
+Steps:
+1. Run analysis and inspect payload fields sent to backend.
+2. Confirm only required analysis fields are transmitted.
+Expected Output:
+- Payload limited to required fields/signals.
+- No unintended credential/token leakage in payload/logs.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-019 | Duplicate Action Click Handling
+--------------------------------------------------------------------------------
+Module: UI Action Robustness
+Precondition: Analysis completed
+Test Data: Any email
+Steps:
+1. Rapidly click Mark Safe or Report Phishing multiple times.
+2. Observe behavior and logs.
+Expected Output:
+- App remains stable.
+- Multiple clicks do not corrupt state.
+- Repeated submissions are controlled/traceable.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+--------------------------------------------------------------------------------
+TC-020 | Education Page Asset Path Validation
+--------------------------------------------------------------------------------
+Module: Static Asset Integrity
+Precondition: Extension built/loaded
+Test Data: N/A
+Steps:
+1. Open education page directly.
+2. Verify logo and favicon path load without broken icon.
+Expected Output:
+- Visual assets load correctly.
+- No console path errors for icon resources.
+Actual Result: ______________________________
+Pass/Fail: _________________________________
+
+
+5) API-Focused Test Cases (Optional Deep Validation)
+----------------------------------------------------
+
+TC-API-01 Analyze Endpoint Schema Validation
+- Send valid payload to `/analyze-email`; expect 200 + complete response schema.
+
+TC-API-02 Analyze Endpoint Missing Fields
+- Send malformed payload; expect validation error (4xx) with clear message.
+
+TC-API-03 Feedback Endpoint Mark Safe
+- POST feedback action `mark_safe`; expect success and log write.
+
+TC-API-04 Feedback Endpoint Report Phishing
+- POST feedback action `report_phishing`; expect success and log write.
+
+Execution fields:
+- Test Data: ______________________________
+- Expected Output: ________________________
+- Actual Result: __________________________
+- Pass/Fail: _____________________________
+
+
+6) Defect Logging Template
+--------------------------
+Use this format for each issue found:
+- Defect ID:
+- Related Test Case ID:
+- Title:
+- Severity (Critical/High/Medium/Low):
+- Steps to Reproduce:
+- Expected:
+- Actual:
+- Screenshots/Logs:
+- Status (Open/In Progress/Fixed/Retest/Closed):
+
+
+7) Final Sign-off Template
+--------------------------
+Test Cycle Name:
+Execution Date:
+Executed By:
+Total Test Cases:
+Passed:
+Failed:
+Blocked:
+Overall Result (Pass/Conditional Pass/Fail):
+Remarks:
+
+
+End of document.

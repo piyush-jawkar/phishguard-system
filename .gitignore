@@ -40,3 +40,6 @@ backend_old_backup/venv/
 AUTO_RUN.py
 __init__.py
 __main__.py
+
+printf "\n00_READ_ME_FIRST.txt\n00_START_HERE.txt\nAUTO_RUN.py\n__init__.py\n__main__.py\n" >> .gitignore
+git add .gitignore && git commit -m "Ignore placeholder root files" && git push

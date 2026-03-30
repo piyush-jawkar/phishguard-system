@@ -42,7 +42,14 @@ TRUSTED_DOMAINS = [
 
 def is_trusted_domain(link: str) -> bool:
     try:
-        parsed = urlparse(link)
+        normalized = (
+            str(link or "")
+            .strip()
+            .replace("[.]", ".")
+            .replace("(.)", ".")
+            .replace("{.}", ".")
+        )
+        parsed = urlparse(normalized)
         domain = parsed.netloc.lower()
         return any(td in domain for td in TRUSTED_DOMAINS)
     except Exception:
@@ -193,27 +200,34 @@ def analyze_email(data: EmailRequest):
     attachment_vt_evidence = []
 
     for link in data.links:
-        if not link.startswith(("http://", "https://")):
+        normalized_link = (
+            str(link or "")
+            .strip()
+            .replace("[.]", ".")
+            .replace("(.)", ".")
+            .replace("{.}", ".")
+        )
+        if not normalized_link.startswith(("http://", "https://")):
             continue
 
-        if is_trusted_domain(link):
-            print("Trusted domain detected:", link)
+        if is_trusted_domain(normalized_link):
+            print("Trusted domain detected:", normalized_link)
             url_scores.append(0.1)
             reputation_scores.append(0.0)
             brand_spoof_scores.append(0.0)
-            vt_evidence.append({"url": link, "status": "skipped_trusted"})
+            vt_evidence.append({"url": normalized_link, "status": "skipped_trusted"})
             continue
 
-        current_url_score = predict_url(link)
-        current_reputation_score = check_reputation(link)
-        current_brand_spoof_score = detect_brand_spoof(link)
+        current_url_score = predict_url(normalized_link)
+        current_reputation_score = check_reputation(normalized_link)
+        current_brand_spoof_score = detect_brand_spoof(normalized_link)
 
         url_scores.append(current_url_score)
         reputation_scores.append(current_reputation_score)
         brand_spoof_scores.append(current_brand_spoof_score)
 
         heuristic_priority = (current_url_score * 0.6) + (current_brand_spoof_score * 0.3) + (current_reputation_score * 0.1)
-        candidate_links.append((heuristic_priority, link))
+        candidate_links.append((heuristic_priority, normalized_link))
 
     # VT checks are expensive; scan only top risky links per email
     top_links = [link for _, link in heapq.nlargest(3, candidate_links, key=lambda x: x[0])]

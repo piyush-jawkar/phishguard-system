@@ -1,0 +1,42 @@
+# OS / editor
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+__pycache__.py
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+backend/venv/
+backend/venv311/
+backend_old_backup/venv/
+
+# Environment files
+.env
+.env.*
+
+# Logs and runtime artifacts
+*.log
+*.pid
+*.seed
+*.out
+*.err
+
+# Temp files
+*.tmp
+*.temp
+~$*.docx
+
+00_READ_ME_FIRST.txt
+00_START_HERE.txt
+AUTO_RUN.py
+__init__.py
+__main__.py

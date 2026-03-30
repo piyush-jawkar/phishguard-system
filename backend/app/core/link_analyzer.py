@@ -31,8 +31,21 @@ def _is_trusted_domain(domain: str) -> bool:
     return any(domain == trusted or domain.endswith(f".{trusted}") for trusted in TRUSTED_DOMAINS)
 
 
+def _normalize_link(link: str) -> str:
+    normalized = (link or "").strip()
+    # Handle commonly defanged URLs copied from security reports/emails.
+    return (
+        normalized.replace("[.]", ".")
+        .replace("(.)", ".")
+        .replace("{.}", ".")
+    )
+
+
 def _should_ignore_link(link: str) -> bool:
-    parsed = urlparse(link)
+    try:
+        parsed = urlparse(_normalize_link(link))
+    except ValueError:
+        return False
     domain = parsed.netloc.lower()
     path = parsed.path.lower()
 
@@ -46,11 +59,15 @@ def analyze_links(links: list[str]) -> float:
     per_link_scores: list[float] = []
 
     for link in links:
-        parsed = urlparse(link)
+        normalized_link = _normalize_link(link)
+        try:
+            parsed = urlparse(normalized_link)
+        except ValueError:
+            continue
         domain = parsed.netloc.lower()
-        lower = link.lower()
+        lower = normalized_link.lower()
 
-        if not domain or _should_ignore_link(link):
+        if not domain or _should_ignore_link(normalized_link):
             continue
 
         per_link_risk = 0.0
@@ -68,7 +85,7 @@ def analyze_links(links: list[str]) -> float:
                 break
 
         # Very long URL can be suspicious, but keep low weight to reduce newsletter false positives
-        if len(link) > 220:
+        if len(normalized_link) > 220:
             per_link_risk += 0.1
 
         # Multiple subdomains in host

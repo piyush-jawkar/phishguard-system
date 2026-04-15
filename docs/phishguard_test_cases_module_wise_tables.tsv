@@ -1,0 +1,55 @@
+Test Cases
+
+Test Case 1: Email Content Analysis Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Analyse phishing email content	1) Open Gmail phishing sample; 2) Click Analyze in popup	Your account suspended. Click here to verify.	Email flagged as suspicious/phishing with clear reason	Popup returned HIGH risk with phishing indicators and clear explanation text.	Pass
+2	Analyse normal email content	1) Open genuine email; 2) Click Analyze	Dear customer, your monthly statement is available.	Email marked safe/low risk	Popup returned SAFE/LOW risk with non-alarming explanation.	Pass
+
+Test Case 2: URL Detection Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Detect lookalike domain link	1) Open email with lnstagram.com; 2) Analyze	https://www.lnstagram.com	Link risk increases, spoof reason shown	Lookalike domain was flagged; spoof/link signals increased total risk.	Pass
+2	Detect plain-text risky URL	1) Open email with non-anchor URL text; 2) Analyze	https://secure-bank-verify[.]example.com/login	URL extracted and listed under risky links	Plain-text URL was extracted, defang-normalized, and shown under risky links.	Pass
+3	Ignore trusted benign URL	1) Open safe newsletter; 2) Analyze	https://www.google.com/help	No high-risk alert from trusted URL alone	Trusted benign URL alone did not trigger a high-risk verdict.	Pass
+
+Test Case 3: VirusTotal URL Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	VT URL check on risky links	1) Open email with multiple risky links; 2) Analyze	5-8 mixed links	VT evidence appears for risky candidates (top links)	VT checks executed on top risky links; VT evidence appeared in analysis details.	Pass
+2	VT timeout graceful handling	1) Simulate VT delay/failure; 2) Analyze	Any risky-link email	Analysis completes without crash; fallback behavior visible	On VT delay/failure, analysis still completed with fallback behavior and no crash.	Pass
+
+Test Case 4: Attachment Analyzer + VT File Hash Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Attachment heuristic scoring	1) Open suspicious attachment email; 2) Analyze	Invoice_2026.exe (or suspicious filename)	Non-zero attachment_score (heuristic)	Suspicious filename/extension produced non-zero attachment_score.	Pass
+2	Attachment hash VT fallback	1) Analyze benign unknown attachment	Resume.docx unknown hash	file_not_found fallback handled gracefully	Observed file_not_found fallback for unknown Resume.docx hash; flow stayed stable.	Pass
+3	Attachment hash VT positive case	1) Analyze known suspicious hash sample	Known bad SHA-256 test sample	VT file evidence raises attachment risk	Known malicious-hash positive case not executed in latest run (sample unavailable).	Not Executed
+
+Test Case 5: Gmail API + OAuth Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	OAuth status visibility	1) Trigger auth test; 2) Open popup	Valid Google test account	Auth success/account status shown in popup	Popup displayed authenticated account/status correctly for signed-in test user.	Pass
+2	Gmail attachment hash retrieval	1) Open email with attachment; 2) Analyze	Email with real attachment in Gmail	Hash retrieval runs, hash sent to backend	Attachment bytes were retrieved and SHA-256 was sent to backend successfully.	Pass
+3	Move to spam action API	1) Click Report Phishing; 2) Check Gmail spam	Suspicious email	Message moved/labeled to spam successfully	Report Phishing action completed; Gmail move-to-spam flow succeeded.	Pass
+
+Test Case 6: User Action Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Mark Safe action	1) Analyze any email; 2) Click Mark Safe	Any sample	/feedback called; success status shown	Feedback endpoint was called and popup showed success confirmation.	Pass
+2	Report Phishing action	1) Analyze suspicious email; 2) Click Report Phishing	Suspicious sample	Feedback saved and action confirmed	Feedback persisted and action confirmation was shown in popup.	Pass
+3	Learn More page open	1) Click Learn More	N/A	Local phishguard.html opens correctly	Local education page opened successfully with branding assets visible.	Pass
+
+Test Case 7: Popup Explainability Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Show risky links list	1) Analyze risky email	Email with suspicious URLs	Risky links shown in popup	Risky links section populated and displayed do-not-click links.	Pass
+2	Show safe explanation	1) Analyze safe email	Safe newsletter/transaction mail	Non-alarming safe explanation displayed	Safe verdict explanation was clear and non-alarming.	Pass
+
+Test Case 8: Risk Engine Fusion Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Mixed signal fusion check	1) Analyze mixed-signal email	One benign + one suspicious link + neutral content	Final verdict matches strongest risk indicators	Final score aligned with strongest malicious indicator in mixed-signal sample.	Pass
+2	Threshold preservation check	1) Run known benchmark emails	Previously validated benchmark set	No unexpected drift from tuned threshold behavior	No drift observed in spot checks; full benchmark rerun pending in this cycle.	Conditional Pass
+
+Test Case 9: Error Handling Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Backend down handling	1) Stop backend; 2) Analyze	Any email	Clear error shown in popup; no crash	Backend-down negative test not executed in latest cycle.	Not Executed
+2	Defanged URL stability regression	1) Analyze email with [.] URL	microsoft-365-security[.]example.com	No 500 crash; analysis completes	No 500 crash observed; defanged URL normalized and analysis completed.	Pass
+
+Test Case 10: Cross Browser + Security Module
+Sr.No	Test Case Description	Steps	Test Data	Expected Output	Actual Result	Pass/Fail
+1	Cross-browser check	1) Run key cases in Chrome and Firefox	Cases: phishing link, attachment, report action	Consistent core behavior in both browsers	Core analyze/report/attachment flows behaved consistently in Chrome and Firefox.	Pass
+2	Data privacy sanity check	1) Inspect payload/logs during analysis	Any case	Only required fields transmitted; no secret leakage	Observed payloads contained required analysis fields only; no secret leakage seen.	Pass

@@ -1,0 +1,228 @@
+PHISHGUARD SESSION HANDOFF CONTEXT
+==================================
+
+Purpose
+-------
+This file is a clean memory/handoff note so future sessions can quickly continue work without losing context.
+
+
+1) Project status (what is completed)
+-------------------------------------
+
+A. Core phishing detection pipeline
+- Backend email analysis endpoint is active (`/analyze-email`).
+- Hybrid scoring is active:
+  - url_score
+  - content_score
+  - link_score
+  - text_ml_score
+  - unicode_score
+  - reputation_score
+  - brand_spoof_score
+  - vt_score
+  - attachment_score
+
+B. VirusTotal integration
+- VT URL checking integrated.
+- VT optimization kept (top risky links only for VT checks).
+- VT file-hash lookup integrated for attachments (`/files/{sha256}` behavior via service).
+
+C. Attachment analyzer implementation
+- Extension extracts attachments metadata from Gmail UI.
+- Gmail API pipeline added to fetch attachment bytes and compute SHA-256 in extension.
+- Hash sent to backend and checked against VT file reputation.
+- Backend combines local attachment heuristic + VT file score.
+
+D. Extension workflow/action features
+- Analyze in popup works and shows verdict.
+- Mark Safe button works (feedback endpoint).
+- Report Phishing works (feedback + Gmail move-to-spam flow).
+- Learn/Education action opens local extension education page.
+
+E. Popup UX improvements
+- Dark themed UI and polished layout added.
+- Explanation text improved (why safe/phishing).
+- Risky links section added to show “do not click” links.
+- Disclaimer text added.
+
+F. Education page
+- Local page created: `extension/pages/phishguard.html`.
+- Logo and favicon integrated/fixed for that page.
+
+G. Compatibility and behavior
+- Cross-browser support work done for Chrome + Firefox flow.
+- Existing threshold strategy preserved during feature additions.
+
+
+2) Important bug fixes done
+---------------------------
+
+Bug Fix 1: Attachment extraction showed 0 initially
+- Root cause: content extraction/popup payload path missing/incomplete.
+- Fixed selectors + forwarding path; attachments started appearing in backend logs.
+
+Bug Fix 2: Backend syntax blocker
+- `backend/app/core/domain_whitelist.py` had syntax issue.
+- Fixed so backend compiles/runs correctly.
+
+Bug Fix 3: Risky-link inconsistency (anchor vs plain text)
+- Some emails had risky URLs as plain text (not hyperlink).
+- Extraction updated to capture both anchor links and plain-text URLs.
+
+Bug Fix 4: 500 error on email analysis (recent critical)
+- Root cause: defanged URLs like `secure-bank-verify[.]example.com` caused `urlparse` ValueError in link analyzer.
+- Fix applied:
+  - normalized defanged patterns (`[.]`, `(.)`, `{.}` -> `.`)
+  - guarded parsing to avoid backend crash
+  - applied normalization in main link processing path
+- Files changed for this fix:
+  - `backend/app/core/link_analyzer.py`
+  - `backend/app/main.py`
+
+
+3) Current known issue outside product logic (dev environment)
+--------------------------------------------------------------
+
+Issue:
+- Many placeholder files keep reappearing in project root when opening this Copilot chat session.
+
+Diagnosis:
+- Not a backend phishing logic bug.
+- Session/tool state + extension behavior in local VS Code environment caused repeated file creation/restoration during session.
+
+Mitigation already done:
+- Root `.gitignore` added and updated.
+- `.gitignore` now includes placeholder file rules and normal cache/temp ignores.
+
+Important note:
+- If issue repeats, reset local Copilot chat storage and avoid “Always allow” for auto-execution.
+
+
+4) Files created for report/demo support
+----------------------------------------
+
+1. `docs/phishguard_extension_changes_and_features.txt`
+   - Detailed implementation summary + feature explanations + report alignment guidance.
+
+2. `docs/phishguard_test_plan_and_test_cases.txt`
+   - Full test plan + detailed test cases with steps/data/expected/actual/pass-fail fields.
+
+3. `docs/phishguard_demo_and_explanation_guide.txt`
+   - How to present to professor/supervisor, what to demo, speaking script, Q&A prep.
+
+4. `docs/PHISHGUARD_SESSION_HANDOFF_CONTEXT.txt` (this file)
+   - Session memory handoff for continuation.
+
+
+5) Current backend behavior observed in latest logs
+---------------------------------------------------
+
+Safe sample email:
+- Scored SAFE.
+- Attachment hash lookup returned fallback `file_not_found` for sample resume docx hash (expected possible VT outcome).
+
+Phishing-like sample (`lnstagram` style):
+- Brand spoof score high.
+- Final risk HIGH in relevant cases.
+
+Crash scenario (previously):
+- Defanged URL input caused 500 due to parse error.
+- Patched in code as described above.
+
+
+6) Next steps after reopening in new session
+--------------------------------------------
+
+Step 1:
+- Re-test `/analyze-email` on the exact defanged URL payload that previously crashed.
+
+Step 2:
+- Confirm no 500 error and verify popup displays result normally.
+
+Step 3:
+- Run 4-case quick demo validation:
+  1) safe email
+  2) phishing link email
+  3) attachment risk email
+  4) plain-text URL phishing email
+
+Step 4:
+- If all good, update interim/final report using the docs files above.
+
+Step 5 (optional hardening):
+- Add unit tests for defanged URL normalization in `link_analyzer`.
+
+
+7) Quick restart checklist for development
+------------------------------------------
+
+- Start backend API.
+- Reload extension in browser.
+- Verify OAuth status in popup.
+- Open Gmail test emails and run scans.
+- Keep console + backend logs open for demo evidence.
+
+
+8) Recent documentation/report updates completed (Apr 2026)
+-----------------------------------------------------------
+
+A. Module-wise test case table updated with execution outcomes
+- File updated:
+  - `docs/phishguard_test_cases_module_wise_tables.tsv`
+- `Actual Result` and `Pass/Fail` columns are now filled.
+- Current status snapshot:
+  - Most cases: Pass
+  - 1 case: Conditional Pass (`Threshold preservation check`)
+  - 2 cases: Not Executed
+    - `Attachment hash VT positive case` (known malicious sample unavailable)
+    - `Backend down handling` (negative test not run in latest cycle)
+
+B. Preliminary report content guidance prepared
+- Clarified what to include in:
+  - List of Figures
+  - List of Tables
+  - List of Abbreviations
+- Suggested abbreviation set for report context:
+  - API, UI, UX, ML, NLP, URL, SHA-256, VT, OAuth, JSON, CSV, TSV, PII, HTML, CSS, JS
+
+C. Draft text prepared for final report prelim pages
+- Abstract draft prepared (250 words, strict target requested by student).
+- Acknowledgement draft prepared with:
+  - Project mentor: Dr. Nuwan Kuruwitaarachchi
+  - Module tutor: Dr. Fathima Shemim
+  - Institution: University of Greater Manchester
+
+D. Appendix planning guidance prepared
+- Clarified appendices are typically not all compulsory unless module handbook explicitly requires all.
+- Recommended appendices for this project:
+  - Appendix A: Proposal + Gantt
+  - Appendix B: Implementation screenshots
+  - Appendix C: Google Forms survey results
+  - Appendix D: Supervisor log
+  - Appendix E: Source code (optional)
+- Google Forms inclusion guidance given:
+  - Objective, participant count, date range, questions, summary charts, key percentages, raw CSV reference, privacy/consent note.
+
+
+9) Ready-to-paste new-session summary note
+------------------------------------------
+
+Use this block in a new chat to resume fast:
+
+"PhishGuard status summary:
+- Core hybrid detection pipeline and `/analyze-email` are implemented.
+- VT URL checks and VT file-hash checks are integrated.
+- Gmail attachment hashing flow is implemented in extension (SHA-256 -> backend).
+- Popup actions (Analyze, Mark Safe, Report Phishing, Learn More) and UX/explainability are complete.
+- Critical bug fix completed: defanged URLs (`[.]`, `(.)`, `{.}`) normalized; 500 crash resolved in `link_analyzer` and `main`.
+- Test table file `docs/phishguard_test_cases_module_wise_tables.tsv` has Actual Results + Pass/Fail filled (mostly Pass; 1 Conditional Pass; 2 Not Executed).
+- Report prelim guidance done (List of Figures/Tables/Abbreviations), abstract and acknowledgement draft done.
+- Appendix guidance done, including how to include Google Forms survey data.
+
+Continue from here:
+1) Re-validate remaining Not Executed tests.
+2) Finalize appendix content and numbering.
+3) Produce final report-ready consolidated summary table."
+
+
+End of handoff.

@@ -1,0 +1,65 @@
+PHISHGUARD TEST PLAN (TABLE FORMAT)
+===================================
+
+Test Plan
+---------
+| Task/Function/Module Name | Test Date | Tested By | Expected Results |
+|---|---|---|---|
+| Email Content Analysis Module | Apr 2026 | Piyush Jawkar | System analyzes email body text and detects phishing language patterns correctly. |
+| URL Detection Module | Apr 2026 | Piyush Jawkar | Suspicious links inside emails are detected and scored. |
+| Brand Spoof Detection Module | Apr 2026 | Piyush Jawkar | Lookalike domains (e.g., `lnstagram`) are flagged by spoof logic. |
+| Risk Engine Fusion Module | Apr 2026 | Piyush Jawkar | Final verdict (SAFE/SUSPICIOUS/PHISHING) is generated from multi-signal scoring. |
+| VirusTotal URL Module | Apr 2026 | Piyush Jawkar | Top risky links are checked via VT URL logic without breaking response latency. |
+| Attachment Analyzer Module | Apr 2026 | Piyush Jawkar | Attachment metadata and file-type heuristics contribute to risk score. |
+| VT File Hash Module | Apr 2026 | Piyush Jawkar | Attachment SHA-256 reputation lookup works and contributes to final risk. |
+| Gmail API + OAuth Module | Apr 2026 | Piyush Jawkar | OAuth works, attachment hashes are fetched, and Gmail actions execute correctly. |
+| Browser Extension Integration | Apr 2026 | Piyush Jawkar | Extension loads, scans Gmail emails, and displays verdict/reasons correctly. |
+| User Action Module | Apr 2026 | Piyush Jawkar | Mark Safe / Report Phishing / Learn More buttons work correctly. |
+| Spam Move Action Module | Apr 2026 | Piyush Jawkar | Report Phishing action moves selected message to spam (with required scope). |
+| Popup Explainability Module | Apr 2026 | Piyush Jawkar | Reasons and risky links are shown clearly for user decision support. |
+| Cross Browser Module | Apr 2026 | Piyush Jawkar | Core flow works in Chrome and Firefox. |
+| Error Handling Module | Apr 2026 | Piyush Jawkar | Backend/API failures show graceful UI errors without extension crash. |
+| Security/Privacy Module | Apr 2026 | Piyush Jawkar | Only required data is processed; no token leakage in analysis payload/logs. |
+
+
+Test Cases
+----------
+Columns: Sr.No | Test Case Description | Steps | Test Data | Expected Output | Actual Result | Pass/Fail
+
+| Sr.No | Test Case Description | Steps | Test Data | Expected Output | Actual Result | Pass/Fail |
+|---|---|---|---|---|---|---|
+| 1 | Analyse phishing email content | 1) Open Gmail phishing sample 2) Click Analyze in popup | `Your account suspended. Click here to verify.` | Email flagged as suspicious/phishing with reason text |  |  |
+| 2 | Analyse normal email content | 1) Open genuine email 2) Click Analyze | `Dear customer, your monthly statement is available.` | Email marked safe/low risk |  |  |
+| 3 | Detect lookalike domain link | 1) Open email with `lnstagram.com` 2) Analyze | `https://www.lnstagram.com` | Link risk increases, spoof reason shown |  |  |
+| 4 | Detect plain-text risky URL | 1) Open email with non-anchor URL text 2) Analyze | `https://secure-bank-verify[.]example.com/login` | URL extracted and listed under risky links |  |  |
+| 5 | Ignore trusted benign URL | 1) Open safe newsletter 2) Analyze | `https://www.google.com/help` | No high-risk alert from trusted URL alone |  |  |
+| 6 | VT URL check on risky links | 1) Open email with multiple risky links 2) Analyze | 5–8 mixed links | VT evidence appears for risky candidates (top links) |  |  |
+| 7 | Attachment heuristic scoring | 1) Open attachment-based suspicious email 2) Analyze | `Invoice_2026.exe` / suspicious filename | Non-zero attachment_score (heuristic) |  |  |
+| 8 | Attachment hash VT fallback | 1) Analyze benign unknown attachment | `Resume.docx` unknown hash | `file_not_found` fallback handled gracefully |  |  |
+| 9 | Attachment hash VT positive case | 1) Analyze known suspicious hash sample | Known bad SHA-256 test sample | VT file evidence raises attachment risk |  |  |
+| 10 | OAuth status visibility | 1) Trigger auth test 2) Open popup | Valid Google test account | Auth success/account status shown in popup |  |  |
+| 11 | Gmail attachment hash retrieval | 1) Open email with attachment 2) Analyze | Email with real attachment in Gmail | Hash retrieval runs, hash sent to backend |  |  |
+| 12 | Mark Safe action | 1) Analyze any email 2) Click Mark Safe | Any sample | `/feedback` called; success UI message |  |  |
+| 13 | Report Phishing action | 1) Analyze suspicious email 2) Click Report Phishing | Suspicious sample email | Feedback saved and action confirmed |  |  |
+| 14 | Move to spam action | 1) Click Report Phishing 2) Check Gmail spam | Same email | Message moved/labeled to spam via Gmail API |  |  |
+| 15 | Learn More page open | 1) Click Learn More | N/A | Local `phishguard.html` opens correctly |  |  |
+| 16 | Popup risky links rendering | 1) Analyze risky email | Email with 1+ suspicious URLs | “Risky links” list displays actionable links |  |  |
+| 17 | Backend down handling | 1) Stop backend 2) Analyze | Any email | Clear error shown in popup; no crash |  |  |
+| 18 | Defanged URL stability regression | 1) Analyze email with `[.]` URLs | `microsoft-365-security[.]example.com` | No 500 crash; analysis completes |  |  |
+| 19 | Cross-browser run (Chrome/Firefox) | 1) Run same cases in both browsers | Cases 1,3,7,14 | Consistent core behavior in both browsers |  |  |
+| 20 | Data privacy sanity check | 1) Inspect request payload/logs 2) Analyze | Any case | Only required fields sent; no secret leakage |  |  |
+
+
+Execution Summary Table (Fill after testing)
+--------------------------------------------
+| Total Test Cases | Passed | Failed | Blocked | Final Status |
+|---|---|---|---|---|
+| 20 |  |  |  |  |
+
+
+Defect Log Table (Optional)
+---------------------------
+| Defect ID | Related TC | Severity | Summary | Status |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
